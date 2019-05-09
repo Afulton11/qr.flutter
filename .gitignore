@@ -12,3 +12,6 @@ packages
 .dart_tool
 pubspec.lock
 test_image.png
+build.gradle
+*.iml
+local.properties

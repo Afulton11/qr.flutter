@@ -4,6 +4,7 @@
  * See LICENSE for distribution and usage details.
  */
 import 'dart:async';
+import 'dart:math' as math show pi;
 import 'dart:ui' as ui;
 
 import 'package:flutter/services.dart';
@@ -25,7 +26,19 @@ class QrPainter extends CustomPainter {
     _init(data);
   }
 
-  final int version; // the qr code version
+  QrPainter.fromData({
+    @required String data,
+    this.errorCorrectionLevel = QrErrorCorrectLevel.L,
+    this.color = const Color(0xff000000),
+    this.emptyColor,
+    this.onError,
+    this.gapless = false,
+  }) : _qr = QrCode.fromData(
+            data: data, errorCorrectLevel: errorCorrectionLevel) {
+    _init(data);
+  }
+
+  int version = -1; // the qr code version
   final int errorCorrectionLevel; // the qr code error correction level
   final Color color; // the color of the dark squares
   final Color emptyColor; // the other color
@@ -34,13 +47,17 @@ class QrPainter extends CustomPainter {
 
   final QrCode _qr; // our qr code data
   final Paint _paint = Paint()..style = PaintingStyle.fill;
+  final Paint _paintOutline = Paint()..style = PaintingStyle.stroke;
   bool _hasError = false;
 
   void _init(String data) {
     _paint.color = color;
+    _paintOutline.color = color;
     // configure and make the QR code data
     try {
-      _qr.addData(data);
+      if (version > 0) {
+        _qr.addData(data);
+      }
       _qr.make();
     } catch (ex) {
       if (onError != null) {
@@ -64,17 +81,24 @@ class QrPainter extends CustomPainter {
       canvas.drawColor(emptyColor, BlendMode.color);
     }
 
-    final double squareSize = size.shortestSide / _qr.moduleCount.toDouble();
-    final int pxAdjustValue = gapless ? 1 : 0;
+    final double moduleSize =
+        (size.shortestSide / _qr.moduleCount.toDouble()) + (gapless ? 1 : 0);
+    final double radius = moduleSize / 3.0;
+
+    _paintOutline.strokeWidth = moduleSize;
+
     for (int x = 0; x < _qr.moduleCount; x++) {
       for (int y = 0; y < _qr.moduleCount; y++) {
-        if (_qr.isDark(y, x)) {
-          final Rect squareRect = Rect.fromLTWH(x * squareSize, y * squareSize,
-              squareSize + pxAdjustValue, squareSize + pxAdjustValue);
-          canvas.drawRect(squareRect, _paint);
+        if (_QrUtility.isFinderPattern(x, y, _qr.moduleCount)) {
+          continue;
+        } else if (_qr.isDark(y, x)) {
+          final Offset position = Offset(x * moduleSize, y * moduleSize);
+          canvas.drawCircle(position, radius, _paint);
         }
       }
     }
+
+    _paintFinderPatterns(canvas, moduleSize);
   }
 
   @override
@@ -97,8 +121,50 @@ class QrPainter extends CustomPainter {
 
   Future<ByteData> toImageData(double size,
       {ui.ImageByteFormat format = ui.ImageByteFormat.png}) async {
-    final ui.Image uiImage = await
-        toPicture(size).toImage(size.toInt(), size.toInt());
+    final ui.Image uiImage =
+        await toPicture(size).toImage(size.toInt(), size.toInt());
     return await uiImage.toByteData(format: format);
   }
+
+  void _paintFinderPatterns(Canvas canvas, double moduleSize) {
+    final double innerOffset = 1.5 * moduleSize;
+
+    final Rect tlPattern = Rect.fromLTWH(0, 0, 6 * moduleSize, 6 * moduleSize);
+    canvas.drawArc(tlPattern, 0, 2 * math.pi, false, _paintOutline);
+    final Rect tlPatternInner =
+        Rect.fromLTWH(innerOffset, innerOffset, 3 * moduleSize, 3 * moduleSize);
+    canvas.drawArc(tlPatternInner, 0, 2 * math.pi, true, _paint);
+
+    final Rect trPattern = Rect.fromLTWH(
+        (_qr.moduleCount - 7) * moduleSize, 0, 6 * moduleSize, 6 * moduleSize);
+    canvas.drawArc(trPattern, 0, 2 * math.pi, false, _paintOutline);
+    final Rect trPatternInner = Rect.fromLTWH(trPattern.left + innerOffset,
+        innerOffset, 3 * moduleSize, 3 * moduleSize);
+    canvas.drawArc(trPatternInner, 0, 2 * math.pi, true, _paint);
+
+    final Rect blPattern = Rect.fromLTWH(
+        0, (_qr.moduleCount - 7) * moduleSize, 6 * moduleSize, 6 * moduleSize);
+    canvas.drawArc(blPattern, 0, 2 * math.pi, false, _paintOutline);
+    final Rect blPatternInner = Rect.fromLTWH(innerOffset,
+        blPattern.top + innerOffset, 3 * moduleSize, 3 * moduleSize);
+    canvas.drawArc(blPatternInner, 0, 2 * math.pi, true, _paint);
+  }
+}
+
+class _QrUtility {
+  static const int _FINDER_SIZE = 7;
+
+  static bool isFinderPattern(int x, int y, int qrSize) =>
+      _isTopLeftFinderPattern(x, y) ||
+      _isTopRightFinderPattern(x, y, qrSize) ||
+      _isBottomLeftFinderPattern(x, y, qrSize);
+
+  static bool _isTopLeftFinderPattern(int x, int y) =>
+      x < _FINDER_SIZE && y < _FINDER_SIZE;
+
+  static bool _isTopRightFinderPattern(int x, int y, int qrSize) =>
+      x > qrSize - _FINDER_SIZE - 1 && y < _FINDER_SIZE;
+
+  static bool _isBottomLeftFinderPattern(int x, int y, int qrSize) =>
+      x < _FINDER_SIZE && y > qrSize - _FINDER_SIZE - 1;
 }

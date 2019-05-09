@@ -16,17 +16,24 @@ class QrImage extends StatelessWidget {
     this.padding = const EdgeInsets.all(10.0),
     this.backgroundColor,
     Color foregroundColor = const Color(0xFF000000),
-    int version = 4,
+    int version,
     int errorCorrectionLevel = QrErrorCorrectLevel.L,
     this.onError,
     this.gapless = false,
-  }) : _painter = QrPainter(
-            data: data,
-            color: foregroundColor,
-            version: version,
-            errorCorrectionLevel: errorCorrectionLevel,
-            gapless: gapless,
-            onError: onError);
+  }) : _painter = version == null
+            ? QrPainter.fromData(
+                data: data,
+                color: foregroundColor,
+                errorCorrectionLevel: errorCorrectionLevel,
+                gapless: gapless,
+                onError: onError)
+            : QrPainter(
+                data: data,
+                version: version,
+                color: foregroundColor,
+                errorCorrectionLevel: errorCorrectionLevel,
+                gapless: gapless,
+                onError: onError);
 
   final QrPainter _painter;
   final Color backgroundColor;
