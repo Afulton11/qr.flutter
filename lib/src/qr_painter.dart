@@ -55,9 +55,7 @@ class QrPainter extends CustomPainter {
     _paintOutline.color = color;
     // configure and make the QR code data
     try {
-      if (version > 0) {
-        _qr.addData(data);
-      }
+      _qr.addData(data);
       _qr.make();
     } catch (ex) {
       if (onError != null) {
@@ -128,26 +126,30 @@ class QrPainter extends CustomPainter {
 
   void _paintFinderPatterns(Canvas canvas, double moduleSize) {
     final double innerOffset = 1.5 * moduleSize;
+    const int diameter = _QrUtility._FINDER_SIZE - 1;
+    const double innerDiameter = diameter / 2.0;
 
-    final Rect tlPattern = Rect.fromLTWH(0, 0, 6 * moduleSize, 6 * moduleSize);
-    canvas.drawArc(tlPattern, 0, 2 * math.pi, false, _paintOutline);
+    final Rect tlPattern = Rect.fromLTWH(0, 0, diameter * moduleSize, diameter * moduleSize);
     final Rect tlPatternInner =
-        Rect.fromLTWH(innerOffset, innerOffset, 3 * moduleSize, 3 * moduleSize);
-    canvas.drawArc(tlPatternInner, 0, 2 * math.pi, true, _paint);
+        Rect.fromLTWH(innerOffset, innerOffset, innerDiameter * moduleSize, innerDiameter * moduleSize);
+    _drawFinderPattern(canvas, tlPattern, tlPatternInner);
 
     final Rect trPattern = Rect.fromLTWH(
-        (_qr.moduleCount - 7) * moduleSize, 0, 6 * moduleSize, 6 * moduleSize);
-    canvas.drawArc(trPattern, 0, 2 * math.pi, false, _paintOutline);
+        (_qr.moduleCount - diameter - 1) * moduleSize, 0, diameter * moduleSize, diameter * moduleSize);
     final Rect trPatternInner = Rect.fromLTWH(trPattern.left + innerOffset,
-        innerOffset, 3 * moduleSize, 3 * moduleSize);
-    canvas.drawArc(trPatternInner, 0, 2 * math.pi, true, _paint);
+        innerOffset, innerDiameter * moduleSize, innerDiameter * moduleSize);
+    _drawFinderPattern(canvas, trPattern, trPatternInner);
 
     final Rect blPattern = Rect.fromLTWH(
-        0, (_qr.moduleCount - 7) * moduleSize, 6 * moduleSize, 6 * moduleSize);
-    canvas.drawArc(blPattern, 0, 2 * math.pi, false, _paintOutline);
+        0, (_qr.moduleCount - diameter - 1) * moduleSize, diameter * moduleSize, diameter * moduleSize);
     final Rect blPatternInner = Rect.fromLTWH(innerOffset,
-        blPattern.top + innerOffset, 3 * moduleSize, 3 * moduleSize);
-    canvas.drawArc(blPatternInner, 0, 2 * math.pi, true, _paint);
+        blPattern.top + innerOffset, innerDiameter * moduleSize, innerDiameter * moduleSize);
+    _drawFinderPattern(canvas, blPattern, blPatternInner);
+  }
+
+  void _drawFinderPattern(Canvas canvas, Rect rect, Rect rectInner) {
+    canvas.drawArc(rect, 0, 2 * math.pi, false, _paintOutline);
+    canvas.drawArc(rectInner, 0, 2 * math.pi, true, _paint);
   }
 }
 
