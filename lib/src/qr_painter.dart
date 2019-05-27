@@ -6,6 +6,7 @@
 import 'dart:async';
 import 'dart:math' as math show pi;
 import 'dart:ui' as ui;
+import 'dart:io' show Platform;
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -55,7 +56,9 @@ class QrPainter extends CustomPainter {
     _paintOutline.color = color;
     // configure and make the QR code data
     try {
-      _qr.addData(data);
+      if (version > 0) {
+        _qr.addData(data);
+      }
       _qr.make();
     } catch (ex) {
       if (onError != null) {
